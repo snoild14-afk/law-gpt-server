@@ -182,9 +182,30 @@ def interpretation_search(query: str):
     }
 
     response = requests.get(url, params=params)
+    data = response.json()
+
+    search_data = data.get("Expc", {})
+    raw_items = search_data.get("expc", [])
+
+    if isinstance(raw_items, dict):
+        raw_items = [raw_items]
+
+    results = []
+
+    for item in raw_items:
+        results.append({
+            "안건명": item.get("안건명"),
+            "안건번호": item.get("안건번호"),
+            "회신일자": item.get("회신일자"),
+            "질의기관": item.get("질의기관명"),
+            "해석기관": item.get("회신기관명"),
+            "관련법령": item.get("법령명"),
+            "상세링크": item.get("법령해석례상세링크")
+        })
 
     return {
-        "요청URL": response.url.replace(LAW_API_OC, "***"),
-        "status_code": response.status_code,
-        "text": response.text[:3000]
+        "검색어": query,
+        "검색대상": "법령해석례",
+        "결과수": search_data.get("totalCnt"),
+        "결과": results
     }
