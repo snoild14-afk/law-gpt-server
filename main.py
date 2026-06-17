@@ -281,3 +281,22 @@ def tax_appeal_search(query: str):
         "status_code": response.status_code,
         "text": response.text[:3000]
     }
+
+@app.get("/precedent-detail")
+def precedent_detail(id: str):
+    url = "https://www.law.go.kr/DRF/lawService.do"
+
+    params = {
+        "OC": LAW_API_OC,
+        "target": "prec",
+        "type": "JSON",
+        "ID": id
+    }
+
+    response = requests.get(url, params=params)
+
+    return {
+        "요청URL": response.url.replace(LAW_API_OC, "***"),
+        "status_code": response.status_code,
+        "text": response.text[:8000]
+    }
