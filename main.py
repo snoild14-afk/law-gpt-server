@@ -343,9 +343,21 @@ def tax_appeal_detail(id: str):
     }
 
     response = requests.get(url, params=params)
+    data = response.json()
+
+    detail = data.get("SpecialDeccService", {})
 
     return {
-        "요청URL": response.url.replace(LAW_API_OC, "***"),
-        "status_code": response.status_code,
-        "text": response.text[:20000]
+        "일련번호": detail.get("특별행정심판재결례일련번호"),
+        "사건명": detail.get("사건명"),
+        "재결청": detail.get("재결청"),
+        "세목": detail.get("세목"),
+        "의결일자": detail.get("의결일자"),
+        "처분일자": detail.get("처분일자"),
+        "주문": detail.get("주문"),
+        "재결요지": detail.get("재결요지"),
+        "관련법령": detail.get("관련법령"),
+        "참조결정": detail.get("참조결정"),
+        "따른결정": detail.get("따른결정"),
+        "이유": detail.get("이유")
     }
