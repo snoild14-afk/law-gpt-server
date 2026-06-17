@@ -84,6 +84,7 @@ def search(query: str, target: str = "law"):
 
 @app.get("/law-detail")
 def law_detail(mst: str):
+
     url = "https://www.law.go.kr/DRF/lawService.do"
 
     params = {
@@ -94,7 +95,8 @@ def law_detail(mst: str):
     }
 
     response = requests.get(url, params=params)
-    data = response.json()
+
+    return response.json()
 
     law = data.get("법령", {})
 
