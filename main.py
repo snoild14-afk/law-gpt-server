@@ -167,3 +167,44 @@ def law_article(mst: str, article: str):
         "결과수": len(matched),
         "결과": matched
     }
+
+@app.get("/interpretation-search")
+def interpretation_search(query: str):
+    url = "https://www.law.go.kr/DRF/lawSearch.do"
+
+    params = {
+        "OC": LAW_API_OC,
+        "target": "expc",
+        "type": "JSON",
+        "query": query,
+        "display": 10,
+        "page": 1
+    }
+
+    response = requests.get(url, params=params)
+    data = response.json()
+
+    search_data = data.get("LawSearch", {})
+    raw_items = search_data.get("expc", [])
+
+    if isinstance(raw_items, dict):
+        raw_items = [raw_items]
+
+    results = []
+
+    for item in raw_items:
+        results.append({
+            "제목": item.get("안건명") or item.get("제목") or item.get("해석례명"),
+            "안건번호": item.get("안건번호"),
+            "회신일자": item.get("회신일자"),
+            "기관": item.get("기관명") or item.get("소관부처명"),
+            "상세링크": item.get("상세링크") or item.get("법령해석례상세링크"),
+            "원본": item
+        })
+
+    return {
+        "검색어": query,
+        "검색대상": "법령해석례",
+        "결과수": search_data.get("totalCnt"),
+        "결과": results
+    }
