@@ -209,3 +209,46 @@ def interpretation_search(query: str):
         "결과수": search_data.get("totalCnt"),
         "결과": results
     }
+
+@app.get("/precedent-search")
+def precedent_search(query: str):
+    url = "https://www.law.go.kr/DRF/lawSearch.do"
+
+    params = {
+        "OC": LAW_API_OC,
+        "target": "prec",
+        "type": "JSON",
+        "query": query,
+        "display": 10,
+        "page": 1
+    }
+
+    response = requests.get(url, params=params)
+    data = response.json()
+
+    search_data = data.get("PrecSearch", {})
+    raw_items = search_data.get("prec", [])
+
+    if isinstance(raw_items, dict):
+        raw_items = [raw_items]
+
+    results = []
+
+    for item in raw_items:
+        results.append({
+            "사건명": item.get("사건명"),
+            "사건번호": item.get("사건번호"),
+            "선고일자": item.get("선고일자"),
+            "법원명": item.get("법원명"),
+            "사건종류": item.get("사건종류명"),
+            "판례일련번호": item.get("판례일련번호"),
+            "상세링크": item.get("판례상세링크"),
+            "원본": item
+        })
+
+    return {
+        "검색어": query,
+        "검색대상": "판례",
+        "결과수": search_data.get("totalCnt"),
+        "결과": results
+    }
