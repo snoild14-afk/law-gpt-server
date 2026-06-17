@@ -18,6 +18,14 @@ def health():
     return {"status": "ok"}
 
 
+def ensure_list(value):
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
+
+
 def extract_mst(detail_link: str):
     if not detail_link:
         return None
@@ -25,14 +33,6 @@ def extract_mst(detail_link: str):
     query = parse_qs(parsed.query)
     mst = query.get("MST")
     return mst[0] if mst else None
-
-
-def ensure_list(value):
-    if value is None:
-        return []
-    if isinstance(value, list):
-        return value
-    return [value]
 
 
 @app.get("/search")
@@ -84,7 +84,6 @@ def search(query: str, target: str = "law"):
 
 @app.get("/law-detail")
 def law_detail(mst: str):
-
     url = "https://www.law.go.kr/DRF/lawService.do"
 
     params = {
@@ -95,12 +94,11 @@ def law_detail(mst: str):
     }
 
     response = requests.get(url, params=params)
-
-    return response.json()
+    data = response.json()
 
     law = data.get("법령", {})
-
     basic = law.get("기본정보", {})
+
     articles_raw = (
         law.get("조문", {})
         .get("조문단위", [])
@@ -116,10 +114,28 @@ def law_detail(mst: str):
             "조문여부": article.get("조문여부"),
             "조문제목": article.get("조문제목"),
             "조문시행일자": article.get("조문시행일자"),
-            "조문내용": article.get("조문내용")
+            "조문내용": article.get("조문내용"),
+            "항": article.get("항")
         })
 
-return data
+    department = basic.get("소관부처")
+    if isinstance(department, dict):
+        department_name = department.get("content")
+    else:
+        department_name = department
+
+    return {
+        "MST": mst,
+        "법령명": basic.get("법령명_한글"),
+        "법령ID": basic.get("법령ID"),
+        "공포번호": basic.get("공포번호"),
+        "공포일자": basic.get("공포일자"),
+        "시행일자": basic.get("시행일자"),
+        "소관부처": department_name,
+        "조문수": len(articles),
+        "조문": articles
+    }
+
 
 @app.get("/law-article")
 def law_article(mst: str, article: str):
@@ -129,7 +145,19 @@ def law_article(mst: str, article: str):
     matched = []
 
     for item in articles:
-        if item.get("조문번호") == article and item.get("조문여부") == "조문":
+        article_no = str(item.get("조문번호", ""))
+        article_branch = item.get("조문가지번호")
+
+        full_no = article_no
+        if article_branch:
+            full_no = f"{article_no}의{article_branch}"
+
+        if (
+            article_no == article
+            or full_no == article
+            or item.get("조문내용", "").startswith(f"제{article}조")
+            or item.get("조문내용", "").startswith(f"제{article}조의")
+        ) and item.get("조문여부") == "조문":
             matched.append(item)
 
     return {
