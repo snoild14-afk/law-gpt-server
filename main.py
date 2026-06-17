@@ -3,7 +3,15 @@ import requests
 import os
 from urllib.parse import urlparse, parse_qs
 
-app = FastAPI()
+app = FastAPI(
+    title="Law GPT Server",
+    version="1.0",
+    servers=[
+        {
+            "url": "https://law-gpt-server.onrender.com"
+        }
+    ]
+)
 
 LAW_API_OC = os.getenv("LAW_API_OC")
 
