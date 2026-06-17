@@ -296,11 +296,23 @@ def precedent_detail(id: str):
     }
 
     response = requests.get(url, params=params)
+    data = response.json()
+
+    detail = data.get("PrecService", {})
 
     return {
-        "요청URL": response.url.replace(LAW_API_OC, "***"),
-        "status_code": response.status_code,
-        "raw_text": response.text[:20000]
+        "판례일련번호": detail.get("판례정보일련번호"),
+        "사건명": detail.get("사건명"),
+        "사건번호": detail.get("사건번호"),
+        "법원명": detail.get("법원명"),
+        "선고일자": detail.get("선고일자"),
+        "판결유형": detail.get("판결유형"),
+        "사건종류": detail.get("사건종류명"),
+        "판시사항": detail.get("판시사항"),
+        "판결요지": detail.get("판결요지"),
+        "참조조문": detail.get("참조조문"),
+        "참조판례": detail.get("참조판례"),
+        "판례내용": detail.get("판례내용")
     }
 
 from bs4 import BeautifulSoup
