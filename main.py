@@ -131,6 +131,7 @@ def law_detail(mst: str):
         "조문수": len(articles),
         "조문": articles
     }
+
 @app.get("/law-article")
 def law_article(mst: str, article: str):
     detail = law_detail(mst)
