@@ -361,3 +361,28 @@ def tax_appeal_detail(id: str):
         "따른결정": detail.get("따른결정"),
         "이유": detail.get("이유")
     }
+
+@app.get("/tax-appeal-summary")
+def tax_appeal_summary(id: str):
+    url = "https://www.law.go.kr/DRF/lawService.do"
+
+    params = {
+        "OC": LAW_API_OC,
+        "target": "ttSpecialDecc",
+        "ID": id,
+        "type": "JSON"
+    }
+
+    response = requests.get(url, params=params)
+    data = response.json()
+
+    detail = data.get("SpecialDeccService", {})
+
+    return {
+        "사건명": detail.get("사건명"),
+        "세목": detail.get("세목"),
+        "의결일자": detail.get("의결일자"),
+        "재결요지": detail.get("재결요지"),
+        "주문": detail.get("주문"),
+        "관련법령": detail.get("관련법령")
+    }
