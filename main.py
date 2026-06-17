@@ -263,27 +263,123 @@ def precedent_search(query: str):
     }
 
 @app.get("/tax-appeal-search")
-def tax_appeal_search(query: str):
+def tax_appeal_search(query: str, case_no: str = "", pages: int = 5):
     url = "https://www.law.go.kr/DRF/lawSearch.do"
 
-    params = {
-        "OC": LAW_API_OC,
-        "target": "ttSpecialDecc",
-        "type": "JSON",
-        "query": query,
-        "display": 10,
-        "page": 1
-    }
+    def normalize(text):
+        if not text:
+            return ""
+        return re.sub(r"[\s\-]", "", str(text))
 
-    response = requests.get(url, params=params)
+    # 사건번호가 query에 들어온 경우 자동 인식
+    if not case_no and re.search(r"조심\s*\d{4}[가-힣]\d+", query):
+        case_no = query
+
+    search_keywords = list(dict.fromkeys([
+        query,
+        normalize(query),
+        case_no,
+        normalize(case_no),
+        query.replace(" ", ""),
+        query.replace("조심", "조심 ")
+    ]))
+
+    all_results = []
+    seen_ids = set()
+
+    for keyword in search_keywords:
+        if not keyword:
+            continue
+
+        for page in range(1, pages + 1):
+            params = {
+                "OC": LAW_API_OC,
+                "target": "ttSpecialDecc",
+                "type": "JSON",
+                "query": keyword,
+                "display": 100,
+                "page": page
+            }
+
+            response = requests.get(url, params=params)
+            data = response.json()
+
+            search_data = data.get("Decc", {})
+            raw_items = search_data.get("decc", [])
+
+            if isinstance(raw_items, dict):
+                raw_items = [raw_items]
+
+            for item in raw_items:
+                appeal_id = item.get("특별행정심판재결례일련번호")
+                if not appeal_id or appeal_id in seen_ids:
+                    continue
+
+                seen_ids.add(appeal_id)
+
+                detail_link = item.get("행정심판재결례상세링크", "")
+                safe_link = detail_link.replace(LAW_API_OC, "***") if LAW_API_OC else detail_link
+
+                all_results.append({
+                    "일련번호": appeal_id,
+                    "청구번호": item.get("청구번호"),
+                    "사건명": item.get("사건명"),
+                    "재결청": item.get("재결청"),
+                    "재결구분": item.get("재결구분명"),
+                    "의결일자": item.get("의결일자"),
+                    "처분일자": item.get("처분일자"),
+                    "데이터기준일시": item.get("데이터기준일시"),
+                    "상세링크": safe_link,
+                    "원본필드": item
+                })
+
+    normalized_case_no = normalize(case_no)
+
+    exact_results = []
+    if normalized_case_no:
+        for item in all_results:
+            if normalize(item.get("청구번호")) == normalized_case_no:
+                exact_results.append(item)
 
     return {
-        "요청URL": response.url.replace(LAW_API_OC, "***"),
-        "status_code": response.status_code,
-        "text": response.text[:3000]
+        "검색어": query,
+        "사건번호검색": case_no,
+        "검색페이지수": pages,
+        "전체결과수": len(all_results),
+        "정확일치수": len(exact_results),
+        "정확일치결과": exact_results,
+        "결과": all_results
     }
 
 from bs4 import BeautifulSoup
+
+@app.get("/tax-appeal-case")
+def tax_appeal_case(case_no: str, pages: int = 10):
+    search_result = tax_appeal_search(query=case_no, case_no=case_no, pages=pages)
+
+    exact_results = search_result.get("정확일치결과", [])
+
+    if not exact_results:
+        return {
+            "사건번호": case_no,
+            "찾음": False,
+            "메시지": "정확히 일치하는 조세심판례를 찾지 못했습니다.",
+            "유사결과수": search_result.get("전체결과수"),
+            "유사결과": search_result.get("결과", [])[:10]
+        }
+
+    first = exact_results[0]
+    appeal_id = first.get("일련번호")
+
+    detail = tax_appeal_detail(appeal_id)
+
+    return {
+        "사건번호": case_no,
+        "찾음": True,
+        "일련번호": appeal_id,
+        "검색결과": first,
+        "상세": detail
+    }
 
 @app.get("/precedent-detail")
 def precedent_detail(id: str):
