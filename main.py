@@ -27,6 +27,14 @@ def extract_mst(detail_link: str):
     return mst[0] if mst else None
 
 
+def ensure_list(value):
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
+
+
 @app.get("/search")
 def search(query: str, target: str = "law"):
     url = "https://www.law.go.kr/DRF/lawSearch.do"
@@ -86,9 +94,38 @@ def law_detail(mst: str):
     }
 
     response = requests.get(url, params=params)
+    data = response.json()
+
+    law = data.get("법령", {})
+
+    basic = law.get("기본정보", {})
+    articles_raw = (
+        law.get("조문", {})
+        .get("조문단위", [])
+    )
+
+    articles = []
+
+    for article in ensure_list(articles_raw):
+        articles.append({
+            "조문키": article.get("조문키"),
+            "조문번호": article.get("조문번호"),
+            "조문가지번호": article.get("조문가지번호"),
+            "조문여부": article.get("조문여부"),
+            "조문제목": article.get("조문제목"),
+            "조문시행일자": article.get("조문시행일자"),
+            "조문내용": article.get("조문내용")
+        })
 
     return {
         "MST": mst,
-        "status_code": response.status_code,
-        "text": response.text[:5000]
+        "법령명": basic.get("법령명_한글"),
+        "법령ID": basic.get("법령ID"),
+        "공포일자": basic.get("공포일자"),
+        "시행일자": basic.get("시행일자"),
+        "소관부처": basic.get("소관부처", {}).get("content")
+            if isinstance(basic.get("소관부처"), dict)
+            else basic.get("소관부처"),
+        "조문수": len(articles),
+        "조문": articles
     }
