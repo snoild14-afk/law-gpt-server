@@ -119,18 +119,7 @@ def law_detail(mst: str):
             "조문내용": article.get("조문내용")
         })
 
-    return {
-        "MST": mst,
-        "법령명": basic.get("법령명_한글"),
-        "법령ID": basic.get("법령ID"),
-        "공포일자": basic.get("공포일자"),
-        "시행일자": basic.get("시행일자"),
-        "소관부처": basic.get("소관부처", {}).get("content")
-            if isinstance(basic.get("소관부처"), dict)
-            else basic.get("소관부처"),
-        "조문수": len(articles),
-        "조문": articles
-    }
+return data
 
 @app.get("/law-article")
 def law_article(mst: str, article: str):
