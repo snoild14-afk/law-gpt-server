@@ -252,3 +252,24 @@ def precedent_search(query: str):
         "결과수": search_data.get("totalCnt"),
         "결과": results
     }
+
+@app.get("/tax-appeal-search")
+def tax_appeal_search(query: str):
+    url = "https://www.law.go.kr/DRF/lawSearch.do"
+
+    params = {
+        "OC": LAW_API_OC,
+        "target": "tax",
+        "type": "JSON",
+        "query": query,
+        "display": 10,
+        "page": 1
+    }
+
+    response = requests.get(url, params=params)
+
+    return {
+        "요청URL": response.url.replace(LAW_API_OC, "***"),
+        "status_code": response.status_code,
+        "text": response.text[:3000]
+    }
