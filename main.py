@@ -207,8 +207,8 @@ def interpretation_search(query: str):
             "회신일자": item.get("회신일자"),
             "질의기관": item.get("질의기관명"),
             "해석기관": item.get("회신기관명"),
-            "관련법령": item.get("법령명"),
-            "상세링크": item.get("법령해석례상세링크")
+            "상세링크": item.get("법령해석례상세링크"),
+            "원본필드": item
         })
 
     return {
