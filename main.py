@@ -309,3 +309,34 @@ def precedent_detail(id: str):
         "status_code": response.status_code,
         "본문": clean_text[:12000]
     }
+
+from bs4 import BeautifulSoup
+
+@app.get("/interpretation-detail")
+def interpretation_detail(id: str):
+    url = "https://www.law.go.kr/DRF/lawService.do"
+
+    params = {
+        "OC": LAW_API_OC,
+        "target": "expc",
+        "ID": id,
+        "type": "HTML",
+        "mobileYn": ""
+    }
+
+    response = requests.get(url, params=params)
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    for tag in soup(["script", "style"]):
+        tag.decompose()
+
+    text = soup.get_text(separator="\n")
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    clean_text = "\n".join(lines)
+
+    return {
+        "해석례ID": id,
+        "status_code": response.status_code,
+        "본문": clean_text[:15000]
+    }
