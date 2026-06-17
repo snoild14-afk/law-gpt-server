@@ -289,8 +289,9 @@ def precedent_detail(id: str):
     params = {
         "OC": LAW_API_OC,
         "target": "prec",
-        "type": "JSON",
-        "ID": id
+        "type": "HTML",
+        "ID": id,
+        "mobileYn": ""
     }
 
     response = requests.get(url, params=params)
@@ -298,5 +299,5 @@ def precedent_detail(id: str):
     return {
         "요청URL": response.url.replace(LAW_API_OC, "***"),
         "status_code": response.status_code,
-        "text": response.text[:8000]
+        "text": response.text[:12000]
     }
