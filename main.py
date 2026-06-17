@@ -330,3 +330,22 @@ def interpretation_detail(id: str):
         "status_code": response.status_code,
         "text": response.text[:15000]
     }
+
+@app.get("/tax-appeal-detail")
+def tax_appeal_detail(id: str):
+    url = "https://www.law.go.kr/DRF/lawService.do"
+
+    params = {
+        "OC": LAW_API_OC,
+        "target": "ttSpecialDecc",
+        "ID": id,
+        "type": "JSON"
+    }
+
+    response = requests.get(url, params=params)
+
+    return {
+        "요청URL": response.url.replace(LAW_API_OC, "***"),
+        "status_code": response.status_code,
+        "text": response.text[:20000]
+    }
