@@ -282,6 +282,8 @@ def tax_appeal_search(query: str):
         "text": response.text[:3000]
     }
 
+from bs4 import BeautifulSoup
+
 @app.get("/precedent-detail")
 def precedent_detail(id: str):
     url = "https://www.law.go.kr/LSW/precInfoP.do"
@@ -293,8 +295,17 @@ def precedent_detail(id: str):
 
     response = requests.get(url, params=params)
 
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    for tag in soup(["script", "style"]):
+        tag.decompose()
+
+    text = soup.get_text(separator="\n")
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    clean_text = "\n".join(lines)
+
     return {
-        "요청URL": response.url,
+        "판례일련번호": id,
         "status_code": response.status_code,
-        "text": response.text[:12000]
+        "본문": clean_text[:12000]
     }
