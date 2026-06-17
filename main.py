@@ -131,3 +131,21 @@ def law_detail(mst: str):
         "조문수": len(articles),
         "조문": articles
     }
+@app.get("/law-article")
+def law_article(mst: str, article: str):
+    detail = law_detail(mst)
+    articles = detail.get("조문", [])
+
+    matched = []
+
+    for item in articles:
+        if item.get("조문번호") == article and item.get("조문여부") == "조문":
+            matched.append(item)
+
+    return {
+        "MST": mst,
+        "법령명": detail.get("법령명"),
+        "검색조문": article,
+        "결과수": len(matched),
+        "결과": matched
+    }
