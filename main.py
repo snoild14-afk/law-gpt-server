@@ -286,28 +286,21 @@ from bs4 import BeautifulSoup
 
 @app.get("/precedent-detail")
 def precedent_detail(id: str):
-    url = "https://www.law.go.kr/LSW/precInfoP.do"
+    url = "https://www.law.go.kr/DRF/lawService.do"
 
     params = {
-        "precSeq": id,
-        "mode": "0"
+        "OC": LAW_API_OC,
+        "target": "prec",
+        "ID": id,
+        "type": "JSON"
     }
 
     response = requests.get(url, params=params)
 
-    soup = BeautifulSoup(response.text, "html.parser")
-
-    for tag in soup(["script", "style"]):
-        tag.decompose()
-
-    text = soup.get_text(separator="\n")
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    clean_text = "\n".join(lines)
-
     return {
-        "판례일련번호": id,
+        "요청URL": response.url.replace(LAW_API_OC, "***"),
         "status_code": response.status_code,
-        "본문": clean_text[:12000]
+        "raw_text": response.text[:20000]
     }
 
 from bs4 import BeautifulSoup
