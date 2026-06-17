@@ -386,3 +386,26 @@ def tax_appeal_summary(id: str):
         "주문": detail.get("주문"),
         "관련법령": detail.get("관련법령")
     }
+
+@app.get("/interpretation-summary")
+def interpretation_summary(id: str):
+    url = "https://www.law.go.kr/DRF/lawService.do"
+
+    params = {
+        "OC": LAW_API_OC,
+        "target": "expc",
+        "ID": id,
+        "type": "JSON"
+    }
+
+    response = requests.get(url, params=params)
+    data = response.json()
+
+    detail = data.get("ExpcService", {})
+
+    return {
+        "안건명": detail.get("안건명"),
+        "질의요지": detail.get("질의요지"),
+        "회답": detail.get("회답"),
+        "해석일자": detail.get("해석일자")
+    }
