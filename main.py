@@ -259,7 +259,7 @@ def tax_appeal_search(query: str):
 
     params = {
         "OC": LAW_API_OC,
-        "target": "tax",
+        "target": "ttSpecialDecc",
         "type": "JSON",
         "query": query,
         "display": 10,
