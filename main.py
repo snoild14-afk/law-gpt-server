@@ -352,7 +352,7 @@ def tax_appeal_search(query: str, case_no: str = "", pages: int = 5):
     }
 
 @app.get("/tax-appeal-smart-search")
-def tax_appeal_smart_search(query: str, pages: int = 10):
+def tax_appeal_smart_search(query: str, pages: int = 3, max_keywords: int = 15):
     def make_keywords(text):
         text = text.strip()
 
