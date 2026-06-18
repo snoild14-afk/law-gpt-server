@@ -351,6 +351,82 @@ def tax_appeal_search(query: str, case_no: str = "", pages: int = 5):
         "결과": all_results
     }
 
+@app.get("/tax-appeal-smart-search")
+def tax_appeal_smart_search(query: str, pages: int = 10):
+    def make_keywords(text):
+        text = text.strip()
+
+        keywords = [
+            text,
+            text.replace(" ", ""),
+        ]
+
+        # 조문 표현 추출: 제31조의5, 제17조 등
+        article_matches = re.findall(r"제\s*\d+조(?:의\s*\d+)?", text)
+        for article in article_matches:
+            article_clean = article.replace(" ", "")
+            keywords.append(article)
+            keywords.append(article_clean)
+
+            if "지방세특례제한법" in text:
+                keywords.append(f"지방세특례제한법 {article_clean}")
+            if "지방세법" in text:
+                keywords.append(f"지방세법 {article_clean}")
+            if "지방세징수법" in text:
+                keywords.append(f"지방세징수법 {article_clean}")
+
+        # 핵심어 후보
+        stopwords = {
+            "경우", "여부", "대한", "따른", "적용", "관련", "대상",
+            "있는", "없는", "하여", "하고", "또는", "및", "그", "이",
+            "것", "수", "볼", "하는", "한", "의", "를", "을", "가", "이"
+        }
+
+        words = re.findall(r"[가-힣A-Za-z0-9]+", text)
+        words = [w for w in words if len(w) >= 2 and w not in stopwords]
+
+        # 단일 핵심어
+        for w in words:
+            keywords.append(w)
+
+        # 2개 조합
+        for i in range(len(words)):
+            for j in range(i + 1, min(i + 5, len(words))):
+                keywords.append(f"{words[i]} {words[j]}")
+
+        # 3개 조합
+        for i in range(len(words)):
+            for j in range(i + 1, min(i + 4, len(words))):
+                for k in range(j + 1, min(j + 4, len(words))):
+                    keywords.append(f"{words[i]} {words[j]} {words[k]}")
+
+        # 중복 제거
+        return list(dict.fromkeys([k for k in keywords if k]))
+
+    keywords = make_keywords(query)
+
+    all_results = []
+    seen_ids = set()
+
+    for keyword in keywords:
+        result = tax_appeal_search(query=keyword, pages=pages)
+        for item in result.get("결과", []):
+            appeal_id = item.get("일련번호")
+            if not appeal_id or appeal_id in seen_ids:
+                continue
+
+            seen_ids.add(appeal_id)
+            item["검색에사용된키워드"] = keyword
+            all_results.append(item)
+
+    return {
+        "원검색어": query,
+        "생성검색어수": len(keywords),
+        "생성검색어": keywords,
+        "결과수": len(all_results),
+        "결과": all_results
+    }
+    
 from bs4 import BeautifulSoup
 
 @app.get("/tax-appeal-case")
