@@ -362,79 +362,124 @@ def tax_appeal_search(query: str, case_no: str = "", pages: int = 5):
     }
 
 @app.get("/tax-appeal-smart-search")
-def tax_appeal_smart_search(query: str, pages: int = 2, max_keywords: int = 15):
+def tax_appeal_smart_search(query: str, pages: int = 2, max_keywords: int = 15, limit: int = 20):
     def make_keywords(text):
         text = text.strip()
 
-        keywords = [
-            text,
-            text.replace(" ", ""),
-        ]
-
-        # 조문 표현 추출: 제31조의5, 제17조 등
-        article_matches = re.findall(r"제\s*\d+조(?:의\s*\d+)?", text)
-        for article in article_matches:
-            article_clean = article.replace(" ", "")
-            keywords.append(article)
-            keywords.append(article_clean)
-
-            if "지방세특례제한법" in text:
-                keywords.append(f"지방세특례제한법 {article_clean}")
-            if "지방세법" in text:
-                keywords.append(f"지방세법 {article_clean}")
-            if "지방세징수법" in text:
-                keywords.append(f"지방세징수법 {article_clean}")
-
-        # 핵심어 후보
         stopwords = {
             "경우", "여부", "대한", "따른", "적용", "관련", "대상",
             "있는", "없는", "하여", "하고", "또는", "및", "그", "이",
-            "것", "수", "볼", "하는", "한", "의", "를", "을", "가", "이"
+            "것", "수", "볼", "하는", "한", "의", "를", "을", "가", "이",
+            "청구법인이", "아닌", "에게", "인지"
         }
 
         words = re.findall(r"[가-힣A-Za-z0-9]+", text)
         words = [w for w in words if len(w) >= 2 and w not in stopwords]
 
-        # 단일 핵심어
+        important_words = []
         for w in words:
+            if w not in important_words:
+                important_words.append(w)
+
+        keywords = [
+            text,
+            text.replace(" ", "")
+        ]
+
+        article_matches = re.findall(r"제\s*\d+조(?:의\s*\d+)?", text)
+        for article in article_matches:
+            article_clean = article.replace(" ", "")
+            keywords.insert(0, article_clean)
+
+            if "지방세특례제한법" in text:
+                keywords.insert(0, f"지방세특례제한법 {article_clean}")
+            if "지방세법" in text:
+                keywords.insert(0, f"지방세법 {article_clean}")
+            if "지방세징수법" in text:
+                keywords.insert(0, f"지방세징수법 {article_clean}")
+
+        # 핵심어 2~3개 조합을 단일어보다 먼저
+        for i in range(len(important_words)):
+            for j in range(i + 1, min(i + 5, len(important_words))):
+                keywords.append(f"{important_words[i]} {important_words[j]}")
+
+        for i in range(len(important_words)):
+            for j in range(i + 1, min(i + 4, len(important_words))):
+                for k in range(j + 1, min(j + 4, len(important_words))):
+                    keywords.append(f"{important_words[i]} {important_words[j]} {important_words[k]}")
+
+        # 단일어는 뒤로
+        for w in important_words:
             keywords.append(w)
 
-        # 2개 조합
-        for i in range(len(words)):
-            for j in range(i + 1, min(i + 5, len(words))):
-                keywords.append(f"{words[i]} {words[j]}")
-
-        # 3개 조합
-        for i in range(len(words)):
-            for j in range(i + 1, min(i + 4, len(words))):
-                for k in range(j + 1, min(j + 4, len(words))):
-                    keywords.append(f"{words[i]} {words[j]} {words[k]}")
-
-        # 중복 제거
         return list(dict.fromkeys([k for k in keywords if k]))
 
-    keywords = make_keywords(query)[:10]
+    def score_item(item, original_query):
+        title = item.get("사건명") or ""
+        case_no = item.get("청구번호") or ""
+        used_keyword = item.get("검색에사용된키워드") or ""
 
-    all_results = []
-    seen_ids = set()
+        words = re.findall(r"[가-힣A-Za-z0-9]+", original_query)
+        words = [w for w in words if len(w) >= 2]
+
+        score = 0
+
+        # 사건명에 원문 핵심어가 많이 들어갈수록 가점
+        for w in words:
+            if w in title:
+                score += 3
+
+        # 사용된 검색어가 길수록 가점
+        score += min(len(used_keyword), 30) / 3
+
+        # 법령 조문 직접 관련 가점
+        if "제31조의5" in title or "제31조의5" in used_keyword:
+            score += 20
+
+        # 지방세 사건 우대
+        if "지" in case_no:
+            score += 10
+
+        # 정확 쟁점어 가점
+        bonus_terms = ["오피스텔", "공공주택사업자", "취득세", "감면", "경감", "제31조의5"]
+        for term in bonus_terms:
+            if term in title:
+                score += 10
+
+        return score
+
+    keywords = make_keywords(query)[:max_keywords]
+
+    results_by_id = {}
 
     for keyword in keywords:
         result = tax_appeal_search(query=keyword, pages=pages)
         for item in result.get("결과", []):
             appeal_id = item.get("일련번호")
-            if not appeal_id or appeal_id in seen_ids:
+            if not appeal_id:
                 continue
 
-            seen_ids.add(appeal_id)
             item["검색에사용된키워드"] = keyword
-            all_results.append(item)
+            item["관련도점수"] = score_item(item, query)
+
+            if appeal_id not in results_by_id:
+                results_by_id[appeal_id] = item
+            else:
+                if item["관련도점수"] > results_by_id[appeal_id].get("관련도점수", 0):
+                    results_by_id[appeal_id] = item
+
+    sorted_results = sorted(
+        results_by_id.values(),
+        key=lambda x: x.get("관련도점수", 0),
+        reverse=True
+    )
 
     return {
         "원검색어": query,
         "생성검색어수": len(keywords),
         "생성검색어": keywords,
-        "결과수": len(all_results),
-        "결과": all_results
+        "결과수": len(sorted_results),
+        "결과": sorted_results[:limit]
     }
     
 from bs4 import BeautifulSoup
