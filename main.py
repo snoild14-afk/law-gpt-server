@@ -330,7 +330,6 @@ def tax_appeal_search(query: str, case_no: str = "", pages: int = 5):
                     "처분일자": item.get("처분일자"),
                     "데이터기준일시": item.get("데이터기준일시"),
                     "상세링크": safe_link,
-                    "원본필드": item
                 })
 
     normalized_case_no = normalize(case_no)
