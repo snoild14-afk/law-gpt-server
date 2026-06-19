@@ -271,9 +271,10 @@ def tax_appeal_search(query: str, case_no: str = "", pages: int = 5):
             return ""
         return re.sub(r"[\s\-]", "", str(text))
 
-    # 사건번호가 query에 들어온 경우 자동 인식
     if not case_no and re.search(r"조심\s*\d{4}[가-힣]\d+", query):
         case_no = query
+
+    normalized_case_no = normalize(case_no)
 
     search_keywords = list(dict.fromkeys([
         query,
@@ -312,15 +313,13 @@ def tax_appeal_search(query: str, case_no: str = "", pages: int = 5):
 
             for item in raw_items:
                 appeal_id = item.get("특별행정심판재결례일련번호")
-                if not appeal_id or appeal_id in seen_ids:
+                if not appeal_id:
                     continue
-
-                seen_ids.add(appeal_id)
 
                 detail_link = item.get("행정심판재결례상세링크", "")
                 safe_link = detail_link.replace(LAW_API_OC, "***") if LAW_API_OC else detail_link
 
-                all_results.append({
+                result_item = {
                     "일련번호": appeal_id,
                     "청구번호": item.get("청구번호"),
                     "사건명": item.get("사건명"),
@@ -330,28 +329,40 @@ def tax_appeal_search(query: str, case_no: str = "", pages: int = 5):
                     "처분일자": item.get("처분일자"),
                     "데이터기준일시": item.get("데이터기준일시"),
                     "상세링크": safe_link,
-                })
+                    "공식출처": "국가법령정보센터 조세심판례"
+                }
 
-    normalized_case_no = normalize(case_no)
+                current_case_no = normalize(item.get("청구번호"))
 
-    exact_results = []
-    if normalized_case_no:
-        for item in all_results:
-            if normalize(item.get("청구번호")) == normalized_case_no:
-                exact_results.append(item)
+                if normalized_case_no and current_case_no == normalized_case_no:
+                    return {
+                        "검색어": query,
+                        "사건번호검색": case_no,
+                        "검색페이지수": page,
+                        "전체결과수": 1,
+                        "정확일치수": 1,
+                        "정확일치결과": [result_item],
+                        "결과": [result_item]
+                    }
+
+                if appeal_id in seen_ids:
+                    continue
+
+                seen_ids.add(appeal_id)
+                all_results.append(result_item)
 
     return {
         "검색어": query,
         "사건번호검색": case_no,
         "검색페이지수": pages,
         "전체결과수": len(all_results),
-        "정확일치수": len(exact_results),
-        "정확일치결과": exact_results,
-        "결과": all_results
+        "정확일치수": 0,
+        "정확일치결과": [],
+        "결과": all_results[:30]
     }
 
 @app.get("/tax-appeal-smart-search")
-def tax_appeal_smart_search(query: str, pages: int = 3, max_keywords: int = 15):
+def tax_appeal_smart_search(query: str, pages: int = 2, max_keywords: int = 15):
     def make_keywords(text):
         text = text.strip()
 
@@ -402,7 +413,7 @@ def tax_appeal_smart_search(query: str, pages: int = 3, max_keywords: int = 15):
         # 중복 제거
         return list(dict.fromkeys([k for k in keywords if k]))
 
-    keywords = make_keywords(query)
+    keywords = make_keywords(query)[:10]
 
     all_results = []
     seen_ids = set()
