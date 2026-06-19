@@ -520,23 +520,39 @@ def tax_appeal_find(query: str, pages: int = 2, max_keywords: int = 15, limit: i
             "검색에사용된키워드": item.get("검색에사용된키워드"),
             "공식출처": item.get("공식출처")
         })
+    distinguishable_cases = []
 
+   for item in results[1:10]:
+        title = item.get("사건명") or ""
+
+    if any(word in title for word in [
+        "부인", "추징", "제외", "기각",
+        "해당하지", "볼 수 없는"
+    ]):
+        distinguishable_cases.append({
+            "청구번호": item.get("청구번호"),
+            "일련번호": item.get("일련번호"),
+            "의결일자": item.get("의결일자"),
+            "사건명": title,
+            "관련도점수": item.get("관련도점수"),
+            "공식출처": item.get("공식출처")
+        })
+        
     return {
-        "원검색어": query,
-        "찾음": True,
-        "공식출처": "국가법령정보센터 조세심판례",
-        "대표사례": {
-            "청구번호": representative.get("청구번호"),
-            "일련번호": representative.get("일련번호"),
-            "의결일자": representative.get("의결일자"),
-            "사건명": representative.get("사건명"),
-            "관련도점수": representative.get("관련도점수"),
-            "검색에사용된키워드": representative.get("검색에사용된키워드"),
-            "상세요약": representative_summary
-        },
-        "유사사례": similar_cases,
-        "전체검색결과수": search_result.get("결과수")
-    }
+    "원검색어": query,
+    "찾음": True,
+    "공식출처": "국가법령정보센터 조세심판례",
+
+    "대표사례": {
+        ...
+    },
+
+    "유사사례": similar_cases,
+
+    "구별사례후보": distinguishable_cases[:3],
+
+    "전체검색결과수": search_result.get("결과수")
+}
     
 from bs4 import BeautifulSoup
 
