@@ -481,6 +481,62 @@ def tax_appeal_smart_search(query: str, pages: int = 2, max_keywords: int = 15, 
         "결과수": len(sorted_results),
         "결과": sorted_results[:limit]
     }
+
+@app.get("/tax-appeal-find")
+def tax_appeal_find(query: str, pages: int = 2, max_keywords: int = 15, limit: int = 10):
+    search_result = tax_appeal_smart_search(
+        query=query,
+        pages=pages,
+        max_keywords=max_keywords,
+        limit=limit
+    )
+
+    results = search_result.get("결과", [])
+
+    if not results:
+        return {
+            "원검색어": query,
+            "찾음": False,
+            "메시지": "국가법령정보센터 조세심판례 공개 DB에서 유사 조세심판례를 확인하지 못했습니다.",
+            "공식출처": "국가법령정보센터 조세심판례"
+        }
+
+    representative = results[0]
+    representative_id = representative.get("일련번호")
+
+    representative_summary = None
+    if representative_id:
+        representative_summary = tax_appeal_summary(representative_id)
+
+    similar_cases = []
+
+    for item in results[1:6]:
+        similar_cases.append({
+            "청구번호": item.get("청구번호"),
+            "일련번호": item.get("일련번호"),
+            "의결일자": item.get("의결일자"),
+            "사건명": item.get("사건명"),
+            "관련도점수": item.get("관련도점수"),
+            "검색에사용된키워드": item.get("검색에사용된키워드"),
+            "공식출처": item.get("공식출처")
+        })
+
+    return {
+        "원검색어": query,
+        "찾음": True,
+        "공식출처": "국가법령정보센터 조세심판례",
+        "대표사례": {
+            "청구번호": representative.get("청구번호"),
+            "일련번호": representative.get("일련번호"),
+            "의결일자": representative.get("의결일자"),
+            "사건명": representative.get("사건명"),
+            "관련도점수": representative.get("관련도점수"),
+            "검색에사용된키워드": representative.get("검색에사용된키워드"),
+            "상세요약": representative_summary
+        },
+        "유사사례": similar_cases,
+        "전체검색결과수": search_result.get("결과수")
+    }
     
 from bs4 import BeautifulSoup
 
